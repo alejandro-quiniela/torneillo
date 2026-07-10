@@ -1,0 +1,1243 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Torneo FIFA</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700;800&family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+
+<!-- Firebase (compat SDK, sin build step) -->
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+
+<style>
+:root{
+  --bg: #0A1F16;
+  --bg-2: #0F2A1D;
+  --card: #12321F;
+  --card-2: #163825;
+  --line: rgba(255,255,255,0.10);
+  --line-strong: rgba(255,255,255,0.20);
+  --pitch: #21B15B;
+  --pitch-dark: #17853F;
+  --yellow: #F2C230;
+  --red: #E4483A;
+  --white: #F3F6F2;
+  --muted: #93A99A;
+  --font-display: 'Barlow Condensed', sans-serif;
+  --font-body: 'Inter', sans-serif;
+  --radius: 14px;
+}
+*{box-sizing:border-box; -webkit-tap-highlight-color: transparent;}
+html,body{margin:0; padding:0; background:var(--bg); color:var(--white); font-family:var(--font-body);}
+body{
+  background-image:
+    linear-gradient(180deg, rgba(0,0,0,0.35), rgba(0,0,0,0.55)),
+    repeating-linear-gradient(90deg, rgba(255,255,255,0.02) 0px, rgba(255,255,255,0.02) 40px, transparent 40px, transparent 80px);
+  min-height:100vh;
+}
+#app{
+  max-width:430px;
+  margin:0 auto;
+  min-height:100vh;
+  padding: 16px 14px 90px 14px;
+  position:relative;
+}
+h1,h2,h3,h4{font-family:var(--font-display); font-weight:700; letter-spacing:0.3px; margin:0 0 8px 0; text-transform:uppercase;}
+h1{font-size:28px; color:var(--white);}
+h2{font-size:21px; color:var(--white);}
+h3{font-size:16px; color:var(--yellow); letter-spacing:0.8px;}
+p{margin:0 0 10px 0; color:var(--muted); font-size:14px; line-height:1.4;}
+a{color:inherit;}
+
+.topbar{
+  display:flex; align-items:center; justify-content:space-between;
+  margin-bottom:18px; padding-bottom:12px; border-bottom:2px solid var(--line-strong);
+}
+.topbar .brand{display:flex; align-items:center; gap:8px;}
+.topbar .ball{width:22px; height:22px; border-radius:50%; background: radial-gradient(circle at 35% 30%, #fff, #cfd8d3 40%, #7d8f84 100%); box-shadow: inset -2px -2px 4px rgba(0,0,0,0.3);}
+.topbar h1{font-size:20px; margin:0;}
+.back-btn{
+  background:var(--card); border:1px solid var(--line-strong); color:var(--white);
+  border-radius:10px; padding:6px 10px; font-size:13px; font-weight:600; cursor:pointer;
+}
+
+.card{
+  background: var(--card);
+  border:1px solid var(--line);
+  border-radius: var(--radius);
+  padding:16px;
+  margin-bottom:14px;
+  position:relative;
+  overflow:hidden;
+}
+.card::before{
+  content:''; position:absolute; left:0; top:0; bottom:0; width:4px;
+  background: linear-gradient(180deg, var(--pitch), var(--pitch-dark));
+}
+.card.flat::before{display:none;}
+.card.flat{padding-left:16px;}
+
+.btn{
+  display:inline-flex; align-items:center; justify-content:center; gap:6px;
+  width:100%; padding:13px 14px; border-radius:12px; border:none;
+  font-family:var(--font-display); font-size:17px; font-weight:700; letter-spacing:0.5px;
+  text-transform:uppercase; cursor:pointer; color:var(--bg);
+  background: linear-gradient(180deg, var(--pitch), var(--pitch-dark));
+  box-shadow: 0 3px 0 #0e5e2c;
+  transition: transform .05s ease;
+}
+.btn:active{transform:translateY(2px); box-shadow:0 1px 0 #0e5e2c;}
+.btn.secondary{
+  background:var(--card-2); color:var(--white); box-shadow:0 3px 0 rgba(0,0,0,0.35); border:1px solid var(--line-strong);
+}
+.btn.yellow{background: linear-gradient(180deg, var(--yellow), #c99c14); color:#241d00; box-shadow:0 3px 0 #8a6a0d;}
+.btn.red{background: linear-gradient(180deg, var(--red), #a52c22); color:#fff; box-shadow:0 3px 0 #6e1c15;}
+.btn.small{width:auto; padding:8px 14px; font-size:14px;}
+.btn:disabled{opacity:0.4; cursor:not-allowed;}
+.btn-row{display:flex; gap:8px;}
+.btn-row .btn{flex:1;}
+
+input[type=text], input[type=number], select{
+  width:100%; padding:11px 12px; border-radius:10px; border:1px solid var(--line-strong);
+  background: var(--bg-2); color:var(--white); font-size:15px; font-family:var(--font-body);
+  outline:none;
+}
+input[type=text]:focus, input[type=number]:focus, select:focus{border-color:var(--pitch);}
+label{display:block; font-size:12px; color:var(--muted); text-transform:uppercase; letter-spacing:0.5px; margin-bottom:5px; font-weight:600;}
+.field{margin-bottom:12px;}
+
+.pill{
+  display:inline-block; padding:3px 10px; border-radius:20px; font-size:11px; font-weight:700;
+  text-transform:uppercase; letter-spacing:0.5px;
+}
+.pill.pend{background:rgba(242,194,48,0.18); color:var(--yellow);}
+.pill.ok{background:rgba(33,177,91,0.2); color:#5fe08a;}
+.pill.locked{background:rgba(228,72,58,0.18); color:#ff8d82;}
+
+.list-item{
+  display:flex; align-items:center; justify-content:space-between;
+  padding:11px 12px; background:var(--bg-2); border-radius:10px; margin-bottom:8px;
+  border:1px solid var(--line);
+}
+.list-item .name{font-weight:600; font-size:15px;}
+.icon-btn{
+  background:none; border:none; color:var(--muted); font-size:18px; cursor:pointer; padding:4px 8px;
+}
+.icon-btn.del:hover{color:var(--red);}
+
+.empty-state{
+  text-align:center; padding:30px 14px; color:var(--muted);
+}
+.empty-state .big-icon{font-size:40px; margin-bottom:10px; display:block;}
+
+/* Pareja / equipo tags con color derivado del nombre */
+.team-tag{
+  display:flex; align-items:center; gap:8px; padding:9px 10px; border-radius:10px;
+  background:var(--bg-2); margin-bottom:6px; border:1px solid var(--line);
+}
+.team-dot{width:10px; height:10px; border-radius:50%; flex-shrink:0;}
+.team-tag .tname{font-size:14px; font-weight:600;}
+.team-tag .tsel{font-size:12px; color:var(--muted); margin-left:auto;}
+
+/* Sorteo */
+.dado-box{
+  text-align:center; padding:18px 10px;
+}
+.dado-resultado{
+  font-family:var(--font-display); font-size:30px; font-weight:800; color:var(--white);
+  margin:14px 0 4px 0; min-height:38px;
+}
+.dado-sub{color:var(--muted); font-size:12px; margin-bottom:14px;}
+.dado-progress{display:flex; gap:5px; justify-content:center; margin-bottom:12px;}
+.dado-progress span{width:26px; height:5px; border-radius:3px; background:var(--line-strong);}
+.dado-progress span.done{background:var(--pitch);}
+
+/* Tabla clasificacion */
+table.tabla{width:100%; border-collapse:collapse; font-size:12.5px;}
+table.tabla th, table.tabla td{padding:7px 4px; text-align:center; border-bottom:1px solid var(--line);}
+table.tabla th{color:var(--muted); font-weight:700; text-transform:uppercase; font-size:10.5px;}
+table.tabla td.nombre{text-align:left; font-weight:600; font-size:12px;}
+table.tabla tr.clasifica td.nombre{color:#5fe08a;}
+table.tabla td.pts{font-weight:800; color:var(--yellow);}
+
+/* Partidos */
+.match-row{
+  display:flex; align-items:center; gap:8px; padding:10px; background:var(--bg-2);
+  border-radius:10px; margin-bottom:8px; border:1px solid var(--line);
+}
+.match-row .side{flex:1; font-size:13px; font-weight:600; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}
+.match-row .side.right{text-align:right;}
+.match-row input[type=number]{width:44px; text-align:center; padding:8px 2px;}
+.match-row .vs{color:var(--muted); font-size:11px; padding:0 2px;}
+.match-row.jugado{opacity:0.85;}
+.match-row .marcador-final{
+  font-family:var(--font-display); font-weight:800; font-size:17px; color:var(--yellow); padding:0 6px; min-width:44px; text-align:center;
+}
+
+/* Bracket */
+.bracket-ronda{margin-bottom:16px;}
+.bracket-cruce{
+  background:var(--bg-2); border:1px solid var(--line); border-radius:10px; padding:10px; margin-bottom:10px;
+}
+.bracket-cruce .fila{display:flex; justify-content:space-between; align-items:center; padding:4px 0;}
+.bracket-cruce .fila.ganador .nom{color:#5fe08a; font-weight:700;}
+.bracket-cruce .nom{font-size:13.5px; font-weight:600;}
+.bracket-cruce .gol{font-family:var(--font-display); font-weight:800; color:var(--yellow); font-size:15px;}
+
+.badge-fase{
+  display:inline-block; background:var(--pitch-dark); color:var(--white); font-family:var(--font-display);
+  font-weight:700; text-transform:uppercase; letter-spacing:0.5px; font-size:12px; padding:4px 10px; border-radius:8px; margin-bottom:10px;
+}
+
+.tabs{display:flex; gap:6px; margin-bottom:14px; overflow-x:auto;}
+.tab{
+  padding:8px 14px; border-radius:9px; background:var(--card); border:1px solid var(--line);
+  font-size:13px; font-weight:700; color:var(--muted); cursor:pointer; white-space:nowrap;
+}
+.tab.active{background:var(--pitch); color:var(--bg); border-color:var(--pitch);}
+
+.warn-box{
+  background: rgba(242,194,48,0.1); border:1px solid rgba(242,194,48,0.4); border-radius:12px;
+  padding:12px 14px; margin-bottom:14px; font-size:13px; color:var(--yellow);
+}
+.info-box{
+  background: rgba(33,177,91,0.08); border:1px solid rgba(33,177,91,0.35); border-radius:12px;
+  padding:12px 14px; margin-bottom:14px; font-size:13px; color:#8fe6ac;
+}
+
+.footer-nav{
+  position:fixed; bottom:0; left:0; right:0; max-width:430px; margin:0 auto;
+  background:var(--card); border-top:1px solid var(--line-strong); display:flex;
+  padding: 6px 4px calc(6px + env(safe-area-inset-bottom)) 4px; z-index:20;
+}
+.footer-nav button{
+  flex:1; background:none; border:none; color:var(--muted); font-size:11px; font-weight:700;
+  text-transform:uppercase; padding:8px 2px; cursor:pointer; display:flex; flex-direction:column; align-items:center; gap:3px;
+}
+.footer-nav button.active{color:var(--pitch);}
+.footer-nav button .ic{font-size:18px;}
+
+.loading-screen{
+  display:flex; flex-direction:column; align-items:center; justify-content:center; min-height:70vh; text-align:center; color:var(--muted);
+}
+.spinner{
+  width:34px; height:34px; border-radius:50%; border:3px solid var(--line-strong); border-top-color:var(--pitch);
+  animation:spin 0.8s linear infinite; margin-bottom:14px;
+}
+@keyframes spin{to{transform:rotate(360deg);}}
+
+.select-swap{margin-bottom:8px;}
+.small-note{font-size:11px; color:var(--muted); margin-top:2px;}
+hr.sep{border:none; border-top:1px solid var(--line); margin:14px 0;}
+.center{text-align:center;}
+.row-between{display:flex; justify-content:space-between; align-items:center;}
+.toast{
+  position:fixed; bottom:80px; left:50%; transform:translateX(-50%); background:var(--card-2);
+  border:1px solid var(--line-strong); color:var(--white); padding:10px 18px; border-radius:30px;
+  font-size:13px; z-index:100; box-shadow:0 4px 14px rgba(0,0,0,0.4); max-width:90%; text-align:center;
+}
+</style>
+</head>
+<body>
+<div id="app"><div class="loading-screen"><div class="spinner"></div><p>Cargando torneo...</p></div></div>
+
+<script>
+/* ============================================================
+   TORNEO FIFA — App single-file (HTML + JS + Firebase Firestore)
+   ============================================================ */
+
+/* ---------- 1. CONFIGURACION FIREBASE ----------
+   Sustituye estos valores por los de tu proyecto Firebase
+   (Firebase Console > Configuración del proyecto > Tus apps > SDK config) */
+const firebaseConfig = {
+  apiKey: "AIzaSyAs4XeW52bHuo5-bXGSzOIPPCms8zcL-Y8",
+  authDomain: "torneillo.firebaseapp.com",
+  projectId: "torneillo",
+  storageBucket: "torneillo.firebasestorage.app",
+  messagingSenderId: "519025555801",
+  appId: "1:519025555801:web:90326943beaa8c25cc3448"
+};
+
+let db = null;
+let firebaseOk = false;
+try{
+  firebase.initializeApp(firebaseConfig);
+  db = firebase.firestore();
+  firebaseOk = true;
+}catch(e){
+  console.error("Error iniciando Firebase. Revisa firebaseConfig.", e);
+}
+
+const COLECCION = "torneos_fifa";
+
+/* ---------- 2. UTILIDADES ---------- */
+function uuid(){
+  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, c=>{
+    const r = Math.random()*16|0, v = c==='x'? r : (r&0x3|0x8);
+    return v.toString(16);
+  });
+}
+function shuffle(arr){
+  const a = [...arr];
+  for(let i=a.length-1;i>0;i--){
+    const j = Math.floor(Math.random()*(i+1));
+    [a[i],a[j]]=[a[j],a[i]];
+  }
+  return a;
+}
+function colorFromString(str){
+  let hash = 0;
+  for(let i=0;i<str.length;i++){ hash = str.charCodeAt(i) + ((hash<<5)-hash); }
+  const hue = Math.abs(hash) % 360;
+  return `hsl(${hue}, 62%, 55%)`;
+}
+function escapeHtml(str){
+  const d = document.createElement('div');
+  d.innerText = str;
+  return d.innerHTML;
+}
+function showToast(msg){
+  const el = document.createElement('div');
+  el.className = 'toast';
+  el.innerText = msg;
+  document.body.appendChild(el);
+  setTimeout(()=> el.remove(), 2200);
+}
+
+/* ---------- 3. LISTA DE SELECCIONES FIFA ---------- */
+const SELECCIONES = [
+"Alemania","Austria","Bélgica","Bulgaria","Dinamarca","Escocia","Eslovenia","España","Finlandia","Francia",
+"Gales","Grecia","Hungría","Inglaterra","Irlanda","Irlanda del Norte","Italia","Noruega","Países Bajos","Polonia",
+"Portugal","República Checa","Rumanía","Rusia","Suecia","Suiza","Turquía","Canadá","Estados Unidos","México",
+"Camerún","Costa de Marfil","Egipto","Sudáfrica","Australia","China","India","Nueva Zelanda","Argentina","Bolivia",
+"Brasil","Chile","Colombia","Ecuador","Paraguay","Perú","Uruguay","Venezuela",
+"Alemania (femenina)","Australia (femenina)","Brasil (femenina)","Canadá (femenina)","China (femenina)","España (femenina)",
+"Estados Unidos (femenina)","Francia (femenina)","Inglaterra (femenina)","Italia (femenina)","México (femenina)","Suecia (femenina)"
+];
+
+/* ---------- 4. ESTADO GLOBAL DE LA APP ---------- */
+const state = {
+  vista: 'inicio',        // inicio | participantes | sorteo | formato | fase | eliminatoria | historial
+  torneoId: null,
+  torneo: null,           // documento en memoria (sincronizado con Firestore)
+  torneosLista: [],
+  unsub: null,            // función para des-suscribir onSnapshot
+  cargando: true,
+  nombreInput: '',
+  dadoAnimando: false
+};
+
+/* ---------- 5. ESTRUCTURA DE UN TORNEO NUEVO ---------- */
+function nuevoTorneoBase(nombre){
+  return {
+    nombre: nombre || ('Torneo ' + new Date().toLocaleDateString('es-ES')),
+    createdAt: Date.now(),
+    estado: 'participantes', // participantes | sorteo | formato | fase | eliminatoria | finalizado
+    participantes: [],        // [{id,nombre}]
+    incluirFemeninas: false,   // si se incluyen selecciones femeninas en el sorteo
+    parejas: [],               // [{id, jugadorIds:[], seleccion:null, intentos:0, historial:[], bloqueada:false}]
+    seleccionesUsadas: [],
+    formato: {
+      tipo: null,             // 'liga' | 'grupos'
+      numGrupos: 2,
+      clasificanPorGrupo: 2,
+      clasificanLiga: 4,
+      jugarTercerPuesto: true,
+      elimIdaVuelta: false
+    },
+    grupos: [],                // [{nombre:'A', parejaIds:[...]}]
+    partidos: [],               // liga/grupos partidos
+    cruces: [],                  // eliminatoria: [{id, ronda, parejaAId, parejaBId, partidos:[{golesA,golesB,jugado}], penaltis:null, ganadorId, formatoIda:bool}]
+    campeonId: null,
+    finalizado: false
+  };
+}
+
+/* ---------- 6. PERSISTENCIA FIRESTORE ---------- */
+async function crearTorneoEnFirestore(nombre){
+  const data = nuevoTorneoBase(nombre);
+  const ref = await db.collection(COLECCION).add(data);
+  localStorage.setItem('torneoFifaActivoId', ref.id);
+  return ref.id;
+}
+
+function suscribirTorneo(id){
+  if(state.unsub) state.unsub();
+  state.torneoId = id;
+  state.cargando = true;
+  render();
+  state.unsub = db.collection(COLECCION).doc(id).onSnapshot(doc=>{
+    if(doc.exists){
+      state.torneo = doc.data();
+      localStorage.setItem('torneoFifaActivoId', id);
+    } else {
+      state.torneo = null;
+    }
+    state.cargando = false;
+    render();
+  }, err=>{
+    console.error(err);
+    state.cargando = false;
+    render();
+  });
+}
+
+async function guardarTorneo(cambios){
+  if(!state.torneoId) return;
+  Object.assign(state.torneo, cambios);
+  await db.collection(COLECCION).doc(state.torneoId).set(state.torneo, {merge:true});
+}
+
+async function cargarListaTorneos(){
+  state.cargando = true; render();
+  const snap = await db.collection(COLECCION).orderBy('createdAt','desc').limit(30).get();
+  state.torneosLista = snap.docs.map(d=>({id:d.id, ...d.data()}));
+  state.cargando = false;
+  render();
+}
+
+function volverAInicio(){
+  if(state.unsub){ state.unsub(); state.unsub = null; }
+  state.torneoId = null;
+  state.torneo = null;
+  state.vista = 'inicio';
+  localStorage.removeItem('torneoFifaActivoId');
+  cargarListaTorneos();
+}
+
+function abrirTorneo(id){
+  state.vista = 'app';
+  suscribirTorneo(id);
+}
+
+/* ---------- 7. ACCIONES: PARTICIPANTES ---------- */
+window.accAgregarParticipante = function(){
+  const input = document.getElementById('inputNombreParticipante');
+  const nombre = (input.value || '').trim();
+  if(!nombre){ showToast('Escribe un nombre'); return; }
+  if(state.torneo.participantes.some(p=>p.nombre.toLowerCase()===nombre.toLowerCase())){
+    showToast('Ese nombre ya está en la lista'); return;
+  }
+  const nuevos = [...state.torneo.participantes, {id: uuid(), nombre}];
+  guardarTorneo({participantes: nuevos});
+  input.value = '';
+  setTimeout(()=>{ const i=document.getElementById('inputNombreParticipante'); if(i) i.focus(); }, 50);
+};
+window.accEliminarParticipante = function(id){
+  const nuevos = state.torneo.participantes.filter(p=>p.id!==id);
+  guardarTorneo({participantes: nuevos});
+};
+window.accToggleFemeninas = function(){
+  const incluir = document.getElementById('chkFemeninas').checked;
+  guardarTorneo({incluirFemeninas: incluir});
+};
+window.accEmpezarTorneo = function(){
+  const participantes = state.torneo.participantes;
+  if(participantes.length < 3){ showToast('Necesitas al menos 3 participantes'); return; }
+  const esImpar = participantes.length % 2 !== 0;
+  if(esImpar){
+    document.getElementById('avisoImpar').style.display = 'block';
+    return;
+  }
+  formarParejasYContinuar(false);
+};
+window.accPermitirTrio = function(){
+  formarParejasYContinuar(true);
+};
+function formarParejasYContinuar(permitirTrio){
+  const ids = shuffle(state.torneo.participantes.map(p=>p.id));
+  const parejas = [];
+  let i = 0;
+  while(i < ids.length){
+    const restantes = ids.length - i;
+    if(permitirTrio && restantes === 3){
+      parejas.push({id:uuid(), jugadorIds:[ids[i], ids[i+1], ids[i+2]], seleccion:null, intentos:0, historial:[], bloqueada:false});
+      i += 3;
+    } else {
+      parejas.push({id:uuid(), jugadorIds:[ids[i], ids[i+1]], seleccion:null, intentos:0, historial:[], bloqueada:false});
+      i += 2;
+    }
+  }
+  guardarTorneo({parejas, estado:'sorteo'});
+}
+
+/* ---------- 8. ACCIONES: SORTEO DE SELECCIONES ---------- */
+function nombreDeJugador(id){
+  const p = state.torneo.participantes.find(p=>p.id===id);
+  return p ? p.nombre : '???';
+}
+function nombreDePareja(pareja){
+  return pareja.jugadorIds.map(nombreDeJugador).join(' / ');
+}
+window.accTirarSeleccion = function(parejaId){
+  const pareja = state.torneo.parejas.find(p=>p.id===parejaId);
+  if(!pareja || pareja.bloqueada) return;
+  const usadas = state.torneo.seleccionesUsadas;
+  const incluirFemeninas = !!state.torneo.incluirFemeninas;
+  const disponibles = SELECCIONES.filter(s=> !usadas.includes(s) && (incluirFemeninas || !s.includes('(femenina)')));
+  if(disponibles.length === 0){ showToast('No quedan selecciones disponibles'); return; }
+  const elegida = disponibles[Math.floor(Math.random()*disponibles.length)];
+  pareja.seleccion = elegida;
+  pareja.intentos += 1;
+  pareja.historial = [...pareja.historial, elegida];
+  if(pareja.intentos >= 3){
+    pareja.bloqueada = true;
+    guardarTorneo({parejas:[...state.torneo.parejas], seleccionesUsadas:[...usadas, elegida]});
+  } else {
+    guardarTorneo({parejas:[...state.torneo.parejas]});
+  }
+};
+window.accAceptarSeleccion = function(parejaId){
+  const pareja = state.torneo.parejas.find(p=>p.id===parejaId);
+  if(!pareja || pareja.bloqueada || !pareja.seleccion) return;
+  pareja.bloqueada = true;
+  guardarTorneo({parejas:[...state.torneo.parejas], seleccionesUsadas:[...state.torneo.seleccionesUsadas, pareja.seleccion]});
+};
+window.accContinuarAFormato = function(){
+  guardarTorneo({estado:'formato'});
+};
+
+/* ---------- 9. GENERACIÓN DE CALENDARIO (round robin) ---------- */
+function generarRoundRobin(ids){
+  let arr = [...ids];
+  if(arr.length % 2 !== 0) arr.push(null);
+  const n = arr.length;
+  const rounds = n - 1;
+  const half = n/2;
+  const jornadas = [];
+  for(let r=0;r<rounds;r++){
+    const partidosJornada = [];
+    for(let i=0;i<half;i++){
+      const a = arr[i], b = arr[n-1-i];
+      if(a!==null && b!==null) partidosJornada.push([a,b]);
+    }
+    jornadas.push(partidosJornada);
+    const fixed = arr[0];
+    const resto = arr.slice(1);
+    resto.unshift(resto.pop());
+    arr = [fixed, ...resto];
+  }
+  return jornadas;
+}
+
+function distribuirGrupos(parejaIds, numGrupos){
+  const shuffled = shuffle(parejaIds);
+  const grupos = Array.from({length:numGrupos}, (_,i)=>({nombre:String.fromCharCode(65+i), parejaIds:[]}));
+  shuffled.forEach((id,i)=> grupos[i % numGrupos].parejaIds.push(id));
+  return grupos;
+}
+
+/* ---------- 10. ACCIONES: FORMATO ---------- */
+window.accGuardarFormato = function(){
+  const numParejas = state.torneo.parejas.length;
+  const tipo = document.getElementById('selTipoFormato').value;
+  const formato = {...state.torneo.formato, tipo};
+  if(tipo === 'liga'){
+    formato.clasificanLiga = parseInt(document.getElementById('selClasificanLiga').value, 10);
+    formato.jugarTercerPuesto = document.getElementById('chkTercerPuesto').checked;
+  } else {
+    formato.numGrupos = parseInt(document.getElementById('selNumGrupos').value, 10);
+    formato.clasificanPorGrupo = parseInt(document.getElementById('selClasificanGrupo').value, 10);
+    formato.jugarTercerPuesto = document.getElementById('chkTercerPuesto').checked;
+  }
+  formato.elimIdaVuelta = document.getElementById('chkIdaVuelta').checked;
+
+  let partidos = [];
+  let grupos = [];
+  if(tipo === 'liga'){
+    const jornadas = generarRoundRobin(state.torneo.parejas.map(p=>p.id));
+    jornadas.forEach((jornada, jIdx)=>{
+      jornada.forEach(([a,b])=>{
+        partidos.push({id:uuid(), fase:'liga', jornada:jIdx+1, grupo:null, parejaLocalId:a, parejaVisitanteId:b, golesLocal:null, golesVisitante:null, jugado:false});
+      });
+    });
+  } else {
+    grupos = distribuirGrupos(state.torneo.parejas.map(p=>p.id), formato.numGrupos);
+    grupos.forEach(g=>{
+      const jornadas = generarRoundRobin(g.parejaIds);
+      jornadas.forEach((jornada, jIdx)=>{
+        jornada.forEach(([a,b])=>{
+          partidos.push({id:uuid(), fase:'grupos', jornada:jIdx+1, grupo:g.nombre, parejaLocalId:a, parejaVisitanteId:b, golesLocal:null, golesVisitante:null, jugado:false});
+        });
+      });
+    });
+  }
+  guardarTorneo({formato, grupos, partidos, estado:'fase'});
+};
+
+/* ---------- 11. TABLA DE CLASIFICACIÓN ---------- */
+function calcularTabla(parejaIds, partidos){
+  const tabla = {};
+  parejaIds.forEach(id=>{ tabla[id] = {id, pj:0,pg:0,pe:0,pp:0,gf:0,gc:0,dg:0,pts:0}; });
+  partidos.filter(p=>p.jugado).forEach(p=>{
+    const L = tabla[p.parejaLocalId], V = tabla[p.parejaVisitanteId];
+    if(!L || !V) return;
+    L.pj++; V.pj++;
+    L.gf += p.golesLocal; L.gc += p.golesVisitante;
+    V.gf += p.golesVisitante; V.gc += p.golesLocal;
+    if(p.golesLocal > p.golesVisitante){ L.pg++; V.pp++; L.pts += 3; }
+    else if(p.golesLocal < p.golesVisitante){ V.pg++; L.pp++; V.pts += 3; }
+    else { L.pe++; V.pe++; L.pts++; V.pts++; }
+  });
+  Object.values(tabla).forEach(t=> t.dg = t.gf - t.gc);
+  const arr = Object.values(tabla);
+  arr.sort((a,b)=>{
+    if(b.pts !== a.pts) return b.pts - a.pts;
+    if(b.dg !== a.dg) return b.dg - a.dg;
+    if(b.gf !== a.gf) return b.gf - a.gf;
+    const h2h = partidos.find(p=> p.jugado && (
+      (p.parejaLocalId===a.id && p.parejaVisitanteId===b.id) ||
+      (p.parejaLocalId===b.id && p.parejaVisitanteId===a.id)
+    ));
+    if(h2h){
+      const aGoles = h2h.parejaLocalId===a.id ? h2h.golesLocal : h2h.golesVisitante;
+      const bGoles = h2h.parejaLocalId===b.id ? h2h.golesLocal : h2h.golesVisitante;
+      if(bGoles !== aGoles) return bGoles - aGoles;
+    }
+    return 0;
+  });
+  return arr;
+}
+
+/* ---------- 12. ACCIONES: RESULTADOS FASE DE GRUPOS/LIGA ---------- */
+window.accGuardarResultado = function(partidoId){
+  const golesLocal = document.getElementById('gl_'+partidoId).value;
+  const golesVis = document.getElementById('gv_'+partidoId).value;
+  if(golesLocal === '' || golesVis === ''){ showToast('Introduce ambos marcadores'); return; }
+  const partido = state.torneo.partidos.find(p=>p.id===partidoId);
+  partido.golesLocal = parseInt(golesLocal,10);
+  partido.golesVisitante = parseInt(golesVis,10);
+  partido.jugado = true;
+  guardarTorneo({partidos:[...state.torneo.partidos]});
+  showToast('Resultado guardado');
+};
+window.accEditarResultado = function(partidoId){
+  const partido = state.torneo.partidos.find(p=>p.id===partidoId);
+  partido.jugado = false;
+  guardarTorneo({partidos:[...state.torneo.partidos]});
+};
+
+window.accIrAEliminatoria = function(){
+  const f = state.torneo.formato;
+  let cruces = [];
+  if(f.tipo === 'liga'){
+    const tabla = calcularTabla(state.torneo.parejas.map(p=>p.id), state.torneo.partidos);
+    const n = f.clasificanLiga;
+    const clasificados = tabla.slice(0, n).map(t=>t.id);
+    cruces = generarCrucesPorSeeding(clasificados);
+  } else {
+    const tablasPorGrupo = {};
+    state.torneo.grupos.forEach(g=>{
+      tablasPorGrupo[g.nombre] = calcularTabla(g.parejaIds, state.torneo.partidos.filter(p=>p.grupo===g.nombre));
+    });
+    cruces = generarCrucesDesdeGrupos(state.torneo.grupos, tablasPorGrupo, f.clasificanPorGrupo);
+  }
+  const cruceObjs = cruces.map((par, idx)=>({
+    id: uuid(),
+    ronda: nombreRondaInicial(cruces.length),
+    orden: idx,
+    parejaAId: par[0],
+    parejaBId: par[1],
+    partidos: [{golesA:null, golesB:null, jugado:false}, ...(f.elimIdaVuelta ? [{golesA:null, golesB:null, jugado:false}] : [])],
+    penaltisA: null,
+    penaltisB: null,
+    ganadorId: null
+  }));
+  guardarTorneo({cruces: cruceObjs, estado:'eliminatoria'});
+};
+
+function nombreRondaInicial(numCruces){
+  if(numCruces === 1) return 'Final';
+  if(numCruces === 2) return 'Semifinal';
+  if(numCruces === 4) return 'Cuartos de final';
+  if(numCruces === 8) return 'Octavos de final';
+  return 'Ronda 1';
+}
+
+function generarCrucesPorSeeding(idsOrdenados){
+  const n = idsOrdenados.length;
+  const cruces = [];
+  for(let i=0;i<n/2;i++){
+    cruces.push([idsOrdenados[i], idsOrdenados[n-1-i]]);
+  }
+  return cruces;
+}
+
+function generarCrucesDesdeGrupos(grupos, tablasPorGrupo, clasificanPorGrupo){
+  const tiers = [];
+  for(let pos=0; pos<clasificanPorGrupo; pos++){
+    tiers.push(grupos.map(g=> (tablasPorGrupo[g.nombre][pos] || {}).id ).filter(Boolean));
+  }
+  if(clasificanPorGrupo === 2 && tiers[0].length === tiers[1].length && tiers[0].length >= 2){
+    const primeros = tiers[0], segundos = tiers[1];
+    const n = primeros.length;
+    const cruces = [];
+    for(let i=0;i<n;i++){
+      const rival = segundos[(i+1) % n]; // cruza con 2º de otro grupo, nunca el propio
+      cruces.push([primeros[i], rival]);
+    }
+    return cruces;
+  }
+  // Fallback genérico: seeding estándar sobre todos los clasificados
+  const flat = tiers.flat();
+  return generarCrucesPorSeeding(flat);
+}
+
+/* ---------- 13. ACCIONES: ELIMINATORIA ---------- */
+function resultadoAgregadoCruce(cruce){
+  let golesA = 0, golesB = 0, todosJugados = true;
+  cruce.partidos.forEach((p, idx)=>{
+    if(!p.jugado){ todosJugados = false; return; }
+    // en partido de vuelta (idx=1) los locales se invierten
+    if(idx === 0){ golesA += p.golesA; golesB += p.golesB; }
+    else { golesA += p.golesB; golesB += p.golesA; }
+  });
+  return {golesA, golesB, todosJugados};
+}
+
+window.accGuardarResultadoCruce = function(cruceId, partidoIdx){
+  const cruce = state.torneo.cruces.find(c=>c.id===cruceId);
+  const ga = document.getElementById(`ca_${cruceId}_${partidoIdx}`).value;
+  const gb = document.getElementById(`cb_${cruceId}_${partidoIdx}`).value;
+  if(ga === '' || gb === ''){ showToast('Introduce ambos marcadores'); return; }
+  cruce.partidos[partidoIdx].golesA = parseInt(ga,10);
+  cruce.partidos[partidoIdx].golesB = parseInt(gb,10);
+  cruce.partidos[partidoIdx].jugado = true;
+
+  const agregado = resultadoAgregadoCruce(cruce);
+  if(agregado.todosJugados){
+    if(agregado.golesA === agregado.golesB){
+      // empate en el global -> necesita penaltis, no resolver todavía
+      cruce.necesitaPenaltis = true;
+      cruce.ganadorId = null;
+    } else {
+      cruce.necesitaPenaltis = false;
+      cruce.ganadorId = agregado.golesA > agregado.golesB ? cruce.parejaAId : cruce.parejaBId;
+    }
+  }
+  guardarTorneo({cruces:[...state.torneo.cruces]});
+  comprobarAvanceRonda();
+};
+
+window.accGuardarPenaltis = function(cruceId){
+  const cruce = state.torneo.cruces.find(c=>c.id===cruceId);
+  const pa = document.getElementById(`pa_${cruceId}`).value;
+  const pb = document.getElementById(`pb_${cruceId}`).value;
+  if(pa === '' || pb === '' || pa === pb){ showToast('Los penaltis no pueden quedar empatados'); return; }
+  cruce.penaltisA = parseInt(pa,10);
+  cruce.penaltisB = parseInt(pb,10);
+  cruce.ganadorId = cruce.penaltisA > cruce.penaltisB ? cruce.parejaAId : cruce.parejaBId;
+  cruce.necesitaPenaltis = false;
+  guardarTorneo({cruces:[...state.torneo.cruces]});
+  comprobarAvanceRonda();
+};
+
+function comprobarAvanceRonda(){
+  const cruces = state.torneo.cruces;
+  // Agrupar por ronda (asumimos que todos los cruces "abiertos" son de la ronda actual, la última generada)
+  const rondasDisponibles = [...new Set(cruces.map(c=>c.ronda))];
+  const ultimaRonda = rondasDisponibles[rondasDisponibles.length-1];
+  const crucesUltimaRonda = cruces.filter(c=>c.ronda === ultimaRonda);
+  const todosResueltos = crucesUltimaRonda.every(c=>c.ganadorId);
+  if(!todosResueltos) return;
+
+  if(crucesUltimaRonda.length === 1){
+    // Ya se jugó la final
+    const final = crucesUltimaRonda[0];
+    guardarTorneo({campeonId: final.ganadorId, estado:'finalizado', finalizado:true});
+    return;
+  }
+  // ¿ya existe la siguiente ronda generada?
+  const siguienteNombre = nombreRondaInicial(crucesUltimaRonda.length/2);
+  const yaExiste = cruces.some(c=>c.ronda===siguienteNombre);
+  if(yaExiste) return;
+
+  const ganadores = crucesUltimaRonda.sort((a,b)=>a.orden-b.orden).map(c=>c.ganadorId);
+  const nuevosCruces = [];
+  for(let i=0;i<ganadores.length/2;i++){
+    nuevosCruces.push({
+      id: uuid(),
+      ronda: siguienteNombre,
+      orden: i,
+      parejaAId: ganadores[i],
+      parejaBId: ganadores[ganadores.length-1-i],
+      partidos: [{golesA:null, golesB:null, jugado:false}, ...(state.torneo.formato.elimIdaVuelta ? [{golesA:null, golesB:null, jugado:false}] : [])],
+      penaltisA: null, penaltisB: null, ganadorId: null
+    });
+  }
+  guardarTorneo({cruces:[...cruces, ...nuevosCruces]});
+}
+
+/* ---------- 14. RENDER: HELPERS DE UI ---------- */
+function nombreParejaPorId(id){
+  if(!state.torneo) return '???';
+  const p = state.torneo.parejas.find(p=>p.id===id);
+  if(!p) return '???';
+  const jugadores = nombreDePareja(p);
+  const sel = p.seleccion ? ` (${p.seleccion})` : '';
+  return jugadores + sel;
+}
+function seleccionParejaPorId(id){
+  const p = state.torneo.parejas.find(p=>p.id===id);
+  return p ? p.seleccion : '';
+}
+
+function topbar(titulo, mostrarVolver){
+  return `
+  <div class="topbar">
+    <div class="brand">
+      <div class="ball"></div>
+      <h1>${escapeHtml(titulo)}</h1>
+    </div>
+    ${mostrarVolver ? `<button class="back-btn" onclick="volverAInicio()">Inicio</button>` : ''}
+  </div>`;
+}
+
+/* ---------- 15. RENDER: PANTALLA INICIO (lista de torneos) ---------- */
+function renderInicio(){
+  const activo = localStorage.getItem('torneoFifaActivoId');
+  let html = topbar('Torneo FIFA', false);
+
+  html += `<div class="card flat"><h2>⚽ Organiza tu torneo</h2>
+    <p>Crea un torneo nuevo con tus amigos: sorteo de parejas, selecciones nacionales, fase de grupos o liga, y eliminatorias.</p>
+    <div class="field">
+      <label>Nombre del torneo</label>
+      <input type="text" id="inputNombreTorneo" placeholder="Ej: Copa Verano 2026">
+    </div>
+    <button class="btn" onclick="accCrearTorneo()">＋ Crear nuevo torneo</button>
+  </div>`;
+
+  if(state.torneosLista.length > 0){
+    html += `<h3>Torneos anteriores</h3>`;
+    state.torneosLista.forEach(t=>{
+      const estadoTxt = t.finalizado ? '🏆 Finalizado' : ('En curso · ' + textoEstado(t.estado));
+      html += `<div class="list-item">
+        <div style="cursor:pointer; flex:1;" onclick="abrirTorneo('${t.id}')">
+          <div class="name">${escapeHtml(t.nombre)}</div>
+          <div class="small-note">${estadoTxt}</div>
+        </div>
+        <button class="icon-btn del" onclick="event.stopPropagation(); accEliminarTorneo('${t.id}', '${escapeHtml(t.nombre).replace(/'/g,"\\'")}')">🗑️</button>
+      </div>`;
+    });
+  } else if(!state.cargando){
+    html += `<div class="empty-state"><span class="big-icon">🏟️</span>Todavía no hay torneos. ¡Crea el primero!</div>`;
+  }
+
+  document.getElementById('app').innerHTML = html;
+  document.getElementById('inputNombreTorneo')?.focus();
+}
+function textoEstado(estado){
+  const map = {
+    participantes:'Añadiendo participantes', sorteo:'Sorteo de selecciones', formato:'Configurando formato',
+    fase:'Fase de grupos/liga', eliminatoria:'Eliminatorias', finalizado:'Finalizado'
+  };
+  return map[estado] || estado;
+}
+window.accCrearTorneo = async function(){
+  const nombre = (document.getElementById('inputNombreTorneo').value || '').trim();
+  const id = await crearTorneoEnFirestore(nombre);
+  abrirTorneo(id);
+};
+window.accEliminarTorneo = async function(id, nombre){
+  const ok = confirm(`¿Seguro que quieres eliminar "${nombre}"? Esta acción no se puede deshacer.`);
+  if(!ok) return;
+  await db.collection(COLECCION).doc(id).delete();
+  if(localStorage.getItem('torneoFifaActivoId') === id){
+    localStorage.removeItem('torneoFifaActivoId');
+  }
+  showToast('Torneo eliminado');
+  cargarListaTorneos();
+};
+
+/* ---------- 16. RENDER: PARTICIPANTES ---------- */
+function renderParticipantes(){
+  const t = state.torneo;
+  let html = topbar(t.nombre, true);
+  html += `<div class="card flat">
+    <h3>1. Participantes</h3>
+    <div class="field" style="display:flex; gap:8px;">
+      <input type="text" id="inputNombreParticipante" placeholder="Nombre del jugador" onkeydown="if(event.key==='Enter') accAgregarParticipante()">
+      <button class="btn small" style="width:auto;" onclick="accAgregarParticipante()">＋</button>
+    </div>
+  </div>`;
+
+  if(t.participantes.length === 0){
+    html += `<div class="empty-state"><span class="big-icon">👥</span>Añade jugadores uno a uno para empezar.</div>`;
+  } else {
+    html += `<div class="card flat">`;
+    t.participantes.forEach(p=>{
+      html += `<div class="list-item">
+        <span class="name">${escapeHtml(p.nombre)}</span>
+        <button class="icon-btn del" onclick="accEliminarParticipante('${p.id}')">✕</button>
+      </div>`;
+    });
+    html += `</div>`;
+  }
+
+  html += `<div class="card flat" style="display:flex; align-items:center; gap:10px;">
+    <input type="checkbox" id="chkFemeninas" style="width:auto;" ${t.incluirFemeninas?'checked':''} onchange="accToggleFemeninas()">
+    <label style="margin:0; text-transform:none; font-size:14px; color:var(--white); font-weight:500;">Incluir selecciones femeninas en el sorteo</label>
+  </div>`;
+
+  html += `<div id="avisoImpar" class="warn-box" style="display:none;">
+    ⚠️ Número impar de participantes (${t.participantes.length}). No se puede emparejar 1 contra 1.
+    Puedes permitir que un grupo sea un <b>trío</b>, o añadir un jugador más.
+    <div class="btn-row" style="margin-top:10px;">
+      <button class="btn yellow small" onclick="accPermitirTrio()">Permitir un trío</button>
+    </div>
+  </div>`;
+
+  html += `<button class="btn" onclick="accEmpezarTorneo()">🎲 Empezar torneo y emparejar</button>`;
+  html += `<p class="small-note center" style="margin-top:8px;">Mínimo 3 participantes. Se emparejan al azar.</p>`;
+
+  document.getElementById('app').innerHTML = html;
+}
+
+/* ---------- 17. RENDER: SORTEO DE SELECCIONES ---------- */
+function renderSorteo(){
+  const t = state.torneo;
+  let html = topbar(t.nombre, true);
+  html += `<div class="badge-fase">Sorteo de selecciones</div>`;
+  html += `<p>Cada pareja tira hasta 3 veces. En la 1ª y 2ª tirada puede aceptar o repetir; a la 3ª se queda con la selección obligatoriamente.</p>`;
+
+  t.parejas.forEach(p=>{
+    const nombre = nombreDePareja(p);
+    const intentosRestantes = 3 - p.intentos;
+    html += `<div class="card">
+      <div class="row-between">
+        <h3 style="margin-bottom:0;">${escapeHtml(nombre)}</h3>
+        ${p.bloqueada ? `<span class="pill locked">Asignada</span>` : `<span class="pill pend">Tirada ${p.intentos}/3</span>`}
+      </div>
+      <div class="dado-box">
+        <div class="dado-progress">
+          ${[0,1,2].map(i=>`<span class="${i < p.intentos ? 'done':''}"></span>`).join('')}
+        </div>
+        <div class="dado-resultado">${p.seleccion ? escapeHtml(p.seleccion) : '—'}</div>
+        <div class="dado-sub">${p.bloqueada ? 'Selección definitiva' : (p.intentos===0 ? 'Aún no ha tirado' : (intentosRestantes+' tirada(s) restante(s)'))}</div>
+        ${!p.bloqueada ? `
+          <div class="btn-row">
+            <button class="btn" onclick="accTirarSeleccion('${p.id}')">${p.intentos===0 ? '🎲 Tirar' : '🎲 Repetir tirada'}</button>
+            ${p.intentos > 0 ? `<button class="btn yellow" onclick="accAceptarSeleccion('${p.id}')">✓ Aceptar</button>` : ''}
+          </div>
+        ` : ''}
+      </div>
+    </div>`;
+  });
+
+  const todasBloqueadas = t.parejas.every(p=>p.bloqueada);
+  html += `<button class="btn" ${todasBloqueadas ? '' : 'disabled'} onclick="accContinuarAFormato()">
+    ${todasBloqueadas ? '➜ Continuar a configuración' : 'Faltan parejas por asignar selección'}
+  </button>`;
+
+  document.getElementById('app').innerHTML = html;
+}
+
+/* ---------- 18. RENDER: CONFIGURACIÓN DE FORMATO ---------- */
+function renderFormato(){
+  const t = state.torneo;
+  const numParejas = t.parejas.length;
+  const sugerenciaLiga = numParejas <= 5;
+  let html = topbar(t.nombre, true);
+  html += `<div class="badge-fase">Configurar formato</div>`;
+
+  html += `<div class="card flat"><h3>Parejas y selecciones</h3>`;
+  t.parejas.forEach(p=>{
+    const color = colorFromString(nombreDePareja(p));
+    html += `<div class="team-tag"><span class="team-dot" style="background:${color}"></span>
+      <span class="tname">${escapeHtml(nombreDePareja(p))}</span>
+      <span class="tsel">${escapeHtml(p.seleccion||'')}</span></div>`;
+  });
+  html += `</div>`;
+
+  html += `<div class="card flat">
+    <h3>Tipo de competición</h3>
+    <p>${numParejas} parejas en juego. ${sugerenciaLiga ? 'Con este número se recomienda formato de liga.' : 'Con este número se recomienda fase de grupos.'}</p>
+    <div class="field">
+      <label>Formato</label>
+      <select id="selTipoFormato" onchange="accCambiarTipoFormatoUI()">
+        <option value="liga" ${sugerenciaLiga?'selected':''}>Liga (todos contra todos)</option>
+        <option value="grupos" ${!sugerenciaLiga?'selected':''}>Fase de grupos</option>
+      </select>
+    </div>
+    <div id="bloqueLiga" style="display:${sugerenciaLiga?'block':'none'}">
+      <div class="field">
+        <label>¿Cuántas parejas pasan a la fase final?</label>
+        <select id="selClasificanLiga">
+          <option value="2">2 (final directa)</option>
+          <option value="4" selected>4 (semifinales)</option>
+          <option value="8">8 (cuartos de final)</option>
+        </select>
+      </div>
+    </div>
+    <div id="bloqueGrupos" style="display:${sugerenciaLiga?'none':'block'}">
+      <div class="field">
+        <label>Número de grupos</label>
+        <select id="selNumGrupos">
+          <option value="2" selected>2 grupos</option>
+          <option value="3">3 grupos</option>
+          <option value="4">4 grupos</option>
+        </select>
+      </div>
+      <div class="field">
+        <label>Clasifican por grupo</label>
+        <select id="selClasificanGrupo">
+          <option value="1">1º de cada grupo</option>
+          <option value="2" selected>1º y 2º de cada grupo</option>
+        </select>
+      </div>
+    </div>
+    <div class="field" style="display:flex; align-items:center; gap:8px;">
+      <input type="checkbox" id="chkTercerPuesto" style="width:auto;" checked>
+      <label style="margin:0;">Jugar partido de 3er puesto</label>
+    </div>
+    <div class="field" style="display:flex; align-items:center; gap:8px;">
+      <input type="checkbox" id="chkIdaVuelta" style="width:auto;">
+      <label style="margin:0;">Eliminatorias a ida y vuelta</label>
+    </div>
+    <p class="small-note">En caso de empate en la eliminatoria (partido único o global a ida y vuelta), se resolverá por penaltis.</p>
+  </div>`;
+
+  html += `<button class="btn" onclick="accGuardarFormato()">➜ Generar calendario</button>`;
+  document.getElementById('app').innerHTML = html;
+}
+window.accCambiarTipoFormatoUI = function(){
+  const tipo = document.getElementById('selTipoFormato').value;
+  document.getElementById('bloqueLiga').style.display = tipo==='liga' ? 'block':'none';
+  document.getElementById('bloqueGrupos').style.display = tipo==='grupos' ? 'block':'none';
+};
+
+/* ---------- 19. RENDER: FASE DE GRUPOS / LIGA ---------- */
+state._tabActivo = null;
+function renderFase(){
+  const t = state.torneo;
+  let html = topbar(t.nombre, true);
+  html += `<div class="badge-fase">${t.formato.tipo==='liga' ? 'Liga' : 'Fase de grupos'}</div>`;
+
+  if(t.formato.tipo === 'grupos'){
+    if(state._tabActivo === null) state._tabActivo = t.grupos[0].nombre;
+    html += `<div class="tabs">`;
+    t.grupos.forEach(g=>{
+      html += `<div class="tab ${state._tabActivo===g.nombre?'active':''}" onclick="accCambiarTab('${g.nombre}')">Grupo ${g.nombre}</div>`;
+    });
+    html += `</div>`;
+    const grupoActivo = t.grupos.find(g=>g.nombre===state._tabActivo);
+    html += renderTablaGrupo(grupoActivo.nombre, grupoActivo.parejaIds, t.formato.clasificanPorGrupo);
+    html += `<h3>Partidos — Grupo ${grupoActivo.nombre}</h3>`;
+    html += renderPartidos(t.partidos.filter(p=>p.grupo===grupoActivo.nombre));
+  } else {
+    html += renderTablaGrupo(null, t.parejas.map(p=>p.id), t.formato.clasificanLiga);
+    html += `<h3>Calendario</h3>`;
+    html += renderPartidos(t.partidos);
+  }
+
+  const todosJugados = t.partidos.every(p=>p.jugado);
+  html += `<button class="btn" ${todosJugados?'':'disabled'} onclick="accIrAEliminatoria()">
+    ${todosJugados ? '🏆 Generar eliminatorias' : 'Faltan partidos por jugar'}
+  </button>`;
+
+  document.getElementById('app').innerHTML = html;
+}
+window.accCambiarTab = function(nombre){
+  state._tabActivo = nombre;
+  render();
+};
+function renderTablaGrupo(nombreGrupo, parejaIds, clasifican){
+  const tabla = calcularTabla(parejaIds, state.torneo.partidos.filter(p => nombreGrupo ? p.grupo===nombreGrupo : true));
+  let html = `<div class="card flat"><h3>Clasificación${nombreGrupo?(' — Grupo '+nombreGrupo):''}</h3>
+  <table class="tabla"><thead><tr>
+    <th style="text-align:left">Pareja</th><th>PJ</th><th>PG</th><th>PE</th><th>PP</th><th>GF</th><th>GC</th><th>DG</th><th>Pts</th>
+  </tr></thead><tbody>`;
+  tabla.forEach((row,i)=>{
+    const nombre = nombreDePareja(state.torneo.parejas.find(p=>p.id===row.id));
+    html += `<tr class="${i<clasifican?'clasifica':''}">
+      <td class="nombre">${i+1}. ${escapeHtml(nombre)}</td>
+      <td>${row.pj}</td><td>${row.pg}</td><td>${row.pe}</td><td>${row.pp}</td>
+      <td>${row.gf}</td><td>${row.gc}</td><td>${row.dg}</td><td class="pts">${row.pts}</td>
+    </tr>`;
+  });
+  html += `</tbody></table></div>`;
+  return html;
+}
+function renderPartidos(partidos){
+  let html = '';
+  const jornadas = [...new Set(partidos.map(p=>p.jornada))].sort((a,b)=>a-b);
+  jornadas.forEach(j=>{
+    html += `<p style="margin:10px 0 6px 0; font-weight:700; color:var(--muted); text-transform:uppercase; font-size:12px;">Jornada ${j}</p>`;
+    partidos.filter(p=>p.jornada===j).forEach(p=>{
+      const nombreL = nombreDePareja(state.torneo.parejas.find(x=>x.id===p.parejaLocalId));
+      const nombreV = nombreDePareja(state.torneo.parejas.find(x=>x.id===p.parejaVisitanteId));
+      if(p.jugado){
+        html += `<div class="match-row jugado">
+          <span class="side">${escapeHtml(nombreL)}</span>
+          <span class="marcador-final">${p.golesLocal}</span>
+          <span class="vs">-</span>
+          <span class="marcador-final">${p.golesVisitante}</span>
+          <span class="side right">${escapeHtml(nombreV)}</span>
+          <button class="icon-btn" onclick="accEditarResultado('${p.id}')">✎</button>
+        </div>`;
+      } else {
+        html += `<div class="match-row">
+          <span class="side">${escapeHtml(nombreL)}</span>
+          <input type="number" min="0" id="gl_${p.id}">
+          <span class="vs">-</span>
+          <input type="number" min="0" id="gv_${p.id}">
+          <span class="side right">${escapeHtml(nombreV)}</span>
+          <button class="icon-btn" onclick="accGuardarResultado('${p.id}')">💾</button>
+        </div>`;
+      }
+    });
+  });
+  return html;
+}
+
+/* ---------- 20. RENDER: ELIMINATORIA ---------- */
+function renderEliminatoria(){
+  const t = state.torneo;
+  let html = topbar(t.nombre, true);
+  html += `<div class="badge-fase">Fase eliminatoria</div>`;
+
+  const rondas = [...new Set(t.cruces.map(c=>c.ronda))];
+  // ordenar rondas de mayor num cruces a menor
+  const ordenRonda = c => t.cruces.filter(x=>x.ronda===c).length;
+  rondas.sort((a,b)=> ordenRonda(b)-ordenRonda(a));
+
+  rondas.forEach(ronda=>{
+    html += `<div class="bracket-ronda"><h3>${escapeHtml(ronda)}</h3>`;
+    t.cruces.filter(c=>c.ronda===ronda).sort((a,b)=>a.orden-b.orden).forEach(c=>{
+      html += renderCruce(c);
+    });
+    html += `</div>`;
+  });
+
+  if(t.finalizado && t.campeonId){
+    html += `<div class="info-box center" style="font-size:16px;">
+      🏆 <b>Campeón: ${escapeHtml(nombreDePareja(t.parejas.find(p=>p.id===t.campeonId)))}</b><br>
+      Selección: ${escapeHtml(seleccionParejaPorId(t.campeonId))}
+    </div>`;
+  }
+
+  document.getElementById('app').innerHTML = html;
+}
+function renderCruce(c){
+  const nombreA = nombreDePareja(state.torneo.parejas.find(p=>p.id===c.parejaAId));
+  const nombreB = nombreDePareja(state.torneo.parejas.find(p=>p.id===c.parejaBId));
+  let html = `<div class="bracket-cruce">`;
+  c.partidos.forEach((p, idx)=>{
+    const local = idx===0 ? nombreA : nombreB;
+    const visit = idx===0 ? nombreB : nombreA;
+    if(p.jugado){
+      html += `<div class="match-row jugado">
+        <span class="side">${escapeHtml(local)}</span>
+        <span class="marcador-final">${p.golesA}</span>
+        <span class="vs">-</span>
+        <span class="marcador-final">${p.golesB}</span>
+        <span class="side right">${escapeHtml(visit)}</span>
+      </div>`;
+    } else {
+      html += `<div class="match-row">
+        <span class="side">${escapeHtml(local)}</span>
+        <input type="number" min="0" id="ca_${c.id}_${idx}">
+        <span class="vs">-</span>
+        <input type="number" min="0" id="cb_${c.id}_${idx}">
+        <span class="side right">${escapeHtml(visit)}</span>
+        <button class="icon-btn" onclick="accGuardarResultadoCruce('${c.id}', ${idx})">💾</button>
+      </div>`;
+    }
+  });
+  if(c.necesitaPenaltis && !c.ganadorId){
+    html += `<div class="warn-box" style="margin-top:8px;">⚽ Empate en el global. Se define por penaltis.
+      <div class="match-row" style="margin-top:8px;">
+        <span class="side">${escapeHtml(nombreA)}</span>
+        <input type="number" min="0" id="pa_${c.id}">
+        <span class="vs">-</span>
+        <input type="number" min="0" id="pb_${c.id}">
+        <span class="side right">${escapeHtml(nombreB)}</span>
+        <button class="icon-btn" onclick="accGuardarPenaltis('${c.id}')">💾</button>
+      </div>
+    </div>`;
+  }
+  if(c.ganadorId){
+    const nombreGanador = nombreDePareja(state.torneo.parejas.find(p=>p.id===c.ganadorId));
+    html += `<div class="fila ganador" style="margin-top:6px;"><span class="nom">✓ Gana ${escapeHtml(nombreGanador)}</span></div>`;
+  }
+  html += `</div>`;
+  return html;
+}
+
+/* ---------- 21. RENDER PRINCIPAL / NAV INFERIOR ---------- */
+function navInferior(){
+  const t = state.torneo;
+  if(!t) return '';
+  const pasos = ['participantes','sorteo','formato','fase','eliminatoria'];
+  const idxActual = pasos.indexOf(t.estado);
+  const iconos = {participantes:'👥', sorteo:'🎲', formato:'⚙️', fase:'📊', eliminatoria:'🏆'};
+  let html = `<div class="footer-nav">`;
+  pasos.forEach((p,i)=>{
+    const disponible = i <= idxActual;
+    html += `<button class="${p===t.estado?'active':''}" ${disponible?`onclick="accIrAPaso('${p}')"`:'disabled style="opacity:0.3"'}>
+      <span class="ic">${iconos[p]}</span>${p.charAt(0).toUpperCase()+p.slice(1)}
+    </button>`;
+  });
+  html += `</div>`;
+  return html;
+}
+window.accIrAPaso = function(paso){
+  // navegación libre solo hacia pasos ya alcanzados, para poder revisar el estado del torneo
+  state._vistaManual = paso;
+  render();
+};
+
+function render(){
+  if(state.vista === 'inicio'){
+    renderInicio();
+    return;
+  }
+  if(state.cargando || !state.torneo){
+    document.getElementById('app').innerHTML = `<div class="loading-screen"><div class="spinner"></div><p>Cargando torneo...</p></div>`;
+    return;
+  }
+  const vistaMostrar = state._vistaManual || state.torneo.estado;
+  switch(vistaMostrar){
+    case 'participantes': renderParticipantes(); break;
+    case 'sorteo': renderSorteo(); break;
+    case 'formato': renderFormato(); break;
+    case 'fase': renderFase(); break;
+    case 'eliminatoria': renderEliminatoria(); break;
+    default: renderEliminatoria();
+  }
+  const nav = navInferior();
+  if(nav) document.getElementById('app').insertAdjacentHTML('beforeend', nav);
+  // resetear vista manual si avanzamos de estado real (para que el nav resalte lo correcto)
+  if(state._vistaManual === state.torneo.estado) state._vistaManual = null;
+}
+
+/* ---------- 22. ARRANQUE ---------- */
+function iniciarApp(){
+  if(!firebaseOk){
+    document.getElementById('app').innerHTML = `<div class="empty-state">
+      <span class="big-icon">⚠️</span>
+      <h2>Falta configurar Firebase</h2>
+      <p>Edita la constante <b>firebaseConfig</b> al principio del script con los datos de tu proyecto de Firebase para poder usar la app.</p>
+    </div>`;
+    return;
+  }
+  const activo = localStorage.getItem('torneoFifaActivoId');
+  if(activo){
+    db.collection(COLECCION).doc(activo).get().then(doc=>{
+      if(doc.exists && !doc.data().finalizado){
+        state.vista = 'app';
+        abrirTorneo(activo);
+      } else {
+        cargarListaTorneos();
+      }
+    }).catch(()=> cargarListaTorneos());
+  } else {
+    cargarListaTorneos();
+  }
+}
+iniciarApp();
+</script>
+</body>
+</html>
